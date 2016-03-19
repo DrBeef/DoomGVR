@@ -57,7 +57,6 @@ public class WADChooser {
 		wadThumbnails.put(new String("freedoom.wad"), new String("fd.png"));
 		wadThumbnails.put(new String("freedoom1.wad"), new String("fd1.png"));
 		wadThumbnails.put(new String("freedoom2.wad"), new String("fd2.png"));
-		wadThumbnails.put(new String("e1m8b.wad"), new String("e1m8b.png"));
 
 		type = Typeface.createFromAsset(assets, "fonts/DooM.ttf");
 
