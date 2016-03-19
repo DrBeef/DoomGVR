@@ -1,0 +1,4 @@
+rootProject.projectDir = new File(settingsDir, '../../../../..')
+rootProject.name = "DoomGVR"
+
+include ':', 'VrApi:Projects:AndroidPrebuilt', 'VrSamples:Native:DoomGVR:Projects:Android', 'VrAppSupport:SystemUtils:Projects:AndroidPrebuilt'
