@@ -10,6 +10,7 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
+import android.os.AsyncTask;
 
 import java.io.File;
 import java.io.InputStream;
@@ -32,6 +33,18 @@ public class WADChooser {
 	Typeface type;
 	private boolean initialised = false;
 
+	private GLES3JNIActivity activity;
+
+	private DownloadTask mDownloadTask = null;
+	boolean download = false;
+
+	public void startDownload()
+	{
+		mDownloadTask = new DownloadTask();
+		mDownloadTask.set_context(activity);
+		mDownloadTask.execute();
+	}
+
 	enum Transition
 	{
 		ready,
@@ -50,29 +63,36 @@ public class WADChooser {
 		this.openGL = openGL;
 	}
 
-	public void Initialise(AssetManager assets)
+	public void Initialise(GLES3JNIActivity activity)
 	{
+		this.activity = activity;
+
 		wadThumbnails.put(new String("doom.wad"), new String("d1.png"));
 		wadThumbnails.put(new String("doom2.wad"), new String("d2.png"));
 		wadThumbnails.put(new String("freedoom.wad"), new String("fd.png"));
 		wadThumbnails.put(new String("freedoom1.wad"), new String("fd1.png"));
 		wadThumbnails.put(new String("freedoom2.wad"), new String("fd2.png"));
 
-		type = Typeface.createFromAsset(assets, "fonts/DooM.ttf");
+		type = Typeface.createFromAsset(activity.getAssets(), "fonts/DooM.ttf");
 
+		buildWADList();
+
+		if (wads.isEmpty()) {
+			mDownloadTask = new DownloadTask();
+			mDownloadTask.set_context(activity);
+		}
+
+		initialised = true;
+	}
+
+	private void buildWADList() {
 		File[] files = new File(DoomTools.GetDVRFolder()).listFiles();
-
 		for (File file : files) {
 			if (file.isFile() &&
 					file.getName().toUpperCase().compareTo("PRBOOM.WAD") != 0 &&
 					file.getName().toUpperCase().endsWith("WAD"))
 				wads.add(file.getName());
 		}
-
-		//No point choosing a wad if there's only one!
-		if (wads.size() == 1) mChoosingWAD = false;
-
-		initialised = true;
 	}
 
 	private boolean mChoosingWAD = true;
@@ -83,7 +103,20 @@ public class WADChooser {
 
 	public void SelectWAD()
 	{
-		mChoosingWAD = false;
+		if (mDownloadTask != null)	{
+			//User has chosen
+			if (download)
+			{
+				startDownload();
+			}
+			else
+			{
+				mDownloadTask = null;
+			}
+		}
+		else {
+			mChoosingWAD = false;
+		}
 	}
 
 	public String GetSelectedWADName() {
@@ -140,7 +173,10 @@ public class WADChooser {
 		}
 		else
 		{
-			canvas.drawText("no thumbnail", 42, 114, paint);
+			if (!wads.isEmpty())
+				canvas.drawText("no thumbnail", 42, 114, paint);
+			else
+				canvas.drawText("NO WADS!", 47, 114, paint);
 		}
 
 // Draw the text
@@ -158,34 +194,92 @@ public class WADChooser {
 		openGL.CopyBitmapToTexture(bitmap, openGL.fbo.ColorTexture[0]);
 	}
 
+	void DrawDownloadStatus(Context ctx)
+	{
+		Bitmap bitmap = Bitmap.createBitmap(400, 400, Bitmap.Config.ARGB_4444);
+		Canvas canvas = new Canvas(bitmap);
+		bitmap.eraseColor(0);
+
+		Paint paint = new Paint();
+		paint.setTextSize(12);
+		paint.setTypeface(type);
+		paint.setAntiAlias(true);
+		paint.setARGB(0xff, 0xff, 0x20, 0x00);
+
+		if (mDownloadTask.downloading) {
+			canvas.drawText("Downloading FREEDOOM", 50, 110, paint);
+			canvas.drawText(mDownloadTask.getStatusString(), 50, 160, paint);
+		}
+		else
+		{
+			canvas.drawText("Download FREEDOOM WADS?", 60, 110, paint);
+			canvas.drawText("Total Size: 17.5MB", 60, 160, paint);
+			paint.setTextSize(18);
+			if (mCurrentTransition == Transition.ready) {
+				if (download)
+					canvas.drawText(">>YES<<   NO", 64, 208, paint);
+				else
+					canvas.drawText("  YES   >>NO<<", 64, 208, paint);
+			}
+		}
+
+		openGL.CopyBitmapToTexture(bitmap, openGL.fbo.ColorTexture[0]);
+	}
+
 	public void onDrawEye(int eye, int width, int height, float[] eyeView, float[] projection, Context ctx) {
 
 		if (!initialised)
 			return;
 
-		if (System.currentTimeMillis() - mTransitionStart > 250) {
-			if (mCurrentTransition == Transition.move_right) {
-				selectedWAD++;
-				if (selectedWAD == wads.size())
-					selectedWAD = 0;
-				mCurrentTransition = Transition.moving_right;
+		if (mDownloadTask != null) {
+			if (System.currentTimeMillis() - mTransitionStart > 250) {
+				if (mCurrentTransition == Transition.move_right) {
+					download = !download;
+					mCurrentTransition = Transition.moving_right;
+				}
+				if (mCurrentTransition == Transition.move_left) {
+					download = !download;
+					mCurrentTransition = Transition.moving_left;
+				}
 			}
-			if (mCurrentTransition == Transition.move_left) {
-				selectedWAD--;
-				if (selectedWAD < 0)
-					selectedWAD = wads.size() - 1;
-				mCurrentTransition = Transition.moving_left;
+
+			if (System.currentTimeMillis() - mTransitionStart > 500)
+			{
+				mTransitionStart = -1;
+				mCurrentTransition = Transition.ready;
+			}
+
+			//Downloading logic
+			DrawDownloadStatus(ctx);
+			if (mDownloadTask.getStatus() == AsyncTask.Status.FINISHED) {
+				buildWADList();
+				mDownloadTask = null;
 			}
 		}
+		else {
+			if (System.currentTimeMillis() - mTransitionStart > 250) {
+				if (mCurrentTransition == Transition.move_right) {
+					selectedWAD++;
+					if (selectedWAD == wads.size())
+						selectedWAD = 0;
+					mCurrentTransition = Transition.moving_right;
+				}
+				if (mCurrentTransition == Transition.move_left) {
+					selectedWAD--;
+					if (selectedWAD < 0)
+						selectedWAD = wads.size() - 1;
+					mCurrentTransition = Transition.moving_left;
+				}
+			}
 
-		if (System.currentTimeMillis() - mTransitionStart > 500)
-		{
-			mTransitionStart = -1;
-			mCurrentTransition = Transition.ready;
+			if (System.currentTimeMillis() - mTransitionStart > 500)
+			{
+				mTransitionStart = -1;
+				mCurrentTransition = Transition.ready;
+			}
+
+			DrawWADName(ctx);
 		}
-
-
-		DrawWADName(ctx);
 
 		GLES20.glEnable(GLES20.GL_SCISSOR_TEST);
 		GLES20.glScissor(0, 0,	width, height);

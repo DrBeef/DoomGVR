@@ -20,7 +20,14 @@ import doom.util.DoomTools;
 class DownloadTask extends AsyncTask<Void, String, Void> {
 	
 	private Context context;
-	private ProgressDialog pd; 
+	public boolean downloading = false;
+
+	private static String status;
+
+	public synchronized String getStatusString()
+	{
+		return status;
+	}
 	
 	public boolean please_abort = false;
 
@@ -39,38 +46,9 @@ class DownloadTask extends AsyncTask<Void, String, Void> {
 	
 	@Override
 	protected void  onPreExecute  (){
-     
-	     pd = new ProgressDialog(context);
-	     
-	     pd.setTitle("Downloading FREEDOOM WAD file ...");
-	     pd.setMessage("starting");
-	     pd.setIndeterminate(true);
-	     pd.setCancelable(true);
-	     
-	     pd.setOnDismissListener( new DialogInterface.OnDismissListener(){
-			public void onDismiss(DialogInterface dialog) {
-				Log.i( "DownloadTask.java", "onDismiss");
-				please_abort = true;		
-			}    	 
-	     });
-	     
-	     pd.setOnCancelListener( new DialogInterface.OnCancelListener(){
-				public void onCancel(DialogInterface dialog) {
-					Log.i( "DownloadTask.java", "onCancel");
-					please_abort = true;		
-				}    	 
-		 });
-	     
-	     
-			pd.setButton(ProgressDialog.BUTTON_POSITIVE, "Cancel", new DialogInterface.OnClickListener() {
-	           public void onClick(DialogInterface dialog, int id) {
-	        	   pd.dismiss();
-	        	   please_abort = true;
-	           }
-	       });
-			
-			pd.show();
-	 
+
+		status = "Downloading";
+		downloading = true;
 	}
 	
 	
@@ -130,10 +108,9 @@ class DownloadTask extends AsyncTask<Void, String, Void> {
     	    if ( (tnow-tprint)> 1000) {
     	    	
     	    	float size_MB = totalcount * (1.0f/(1<<20));
-    	    	float speed_KB = partialcount  * (1.0f/(1<<10)) * ((tnow-tprint)/1000.0f);
-    	    	
-    	    	publishProgress( String.format("downloaded %.1f MB (%.1f KB/sec)",
-    	    			size_MB, speed_KB));
+
+    	    	publishProgress( String.format("downloaded: %.2f MB",
+    	    			size_MB));
 
     	    	tprint = tnow;
     	    	partialcount = 0;
@@ -163,19 +140,18 @@ class DownloadTask extends AsyncTask<Void, String, Void> {
 		ZipFile file = new ZipFile  (freedoomZip);
 		//extract_file( file, "freedoom-0.10.1\\COPYING", DoomTools.GetDVRFolder() + File.separator + "COPYING.txt");
 		//extract_file( file, "freedoom-0.10.1\\CREDITS", DoomTools.GetDVRFolder() + File.separator + "CREDITS.txt");
-		extract_file( file, "freedoom-0.10.1/README.html", DoomTools.GetDVRFolder() + File.separator + "README.html");
-		extract_file( file, "freedoom-0.10.1/freedoom1.wad", DoomTools.GetDVRFolder() + File.separator + "freedoom1.wad");
-		extract_file( file, "freedoom-0.10.1/freedoom2.wad", DoomTools.GetDVRFolder() + File.separator + "freedoom2.wad");
+		publishProgress("extracting: freedoom1.wad");
+		extract_file(file, "freedoom-0.10.1/freedoom1.wad", DoomTools.GetDVRFolder() + File.separator + "freedoom1.wad");
+		publishProgress("extracting: freedoom2.wad");
+		extract_file(file, "freedoom-0.10.1/freedoom2.wad", DoomTools.GetDVRFolder() + File.separator + "freedoom2.wad");
+		publishProgress("extracting: README.html");
+		extract_file(file, "freedoom-0.10.1/README.html", DoomTools.GetDVRFolder() + File.separator + "README.html");
 
     	file.close();
     	
     	// done
-    	publishProgress("extract done" );
-
-		pd.getButton(ProgressDialog.BUTTON_POSITIVE).setText("Done");
-
-		SystemClock.sleep(1000);
-
+    	publishProgress("extract done");
+		SystemClock.sleep(2000);
 	}
 
 	private void extract_file( ZipFile file, String entry_name, String output_name ) throws Exception{
@@ -253,10 +229,6 @@ class DownloadTask extends AsyncTask<Void, String, Void> {
 	protected Void doInBackground(Void... unused) {
 		
     	try {
-
-			//Inform game we are now downloading
-			//QVRJNILib.setDownloadStatus(2);
-
     		long t = SystemClock.uptimeMillis();
 
     		download_demo();
@@ -271,7 +243,6 @@ class DownloadTask extends AsyncTask<Void, String, Void> {
 
 			e.printStackTrace();
 
-			//QVRJNILib.setDownloadStatus(0);
 			publishProgress("Error: " + e );
 		}
     	
@@ -281,11 +252,11 @@ class DownloadTask extends AsyncTask<Void, String, Void> {
 	@Override
 	protected void onProgressUpdate(String... progress) {
 		Log.i( "DownloadTask.java", progress[0]);
-		pd.setMessage( progress[0]);
+		status = progress[0];
 	}
 	
 	@Override
 	protected void onPostExecute(Void unused) {
-		pd.hide();
+
 	}
 }

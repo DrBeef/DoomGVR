@@ -54,15 +54,6 @@ public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback
 
 	// Audio Cache Manager
 	private doom.audio.AudioManager mAudioMgr;
-	private Bitmap mDoomBitmap;
-
-	public int getmDoomWidth() {
-		return mDoomWidth;
-	}
-
-	public int getmDoomHeight() {
-		return mDoomHeight;
-	}
 
 	// width of mBitmap
 	private int mDoomWidth;
@@ -86,7 +77,6 @@ public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback
 	//Read these from a file and pass through
 	String commandLineParams = new String("");
 
-	private DownloadTask mDownloadTask = null;
 	private WADChooser  mWADChooser = null;
 
 	public static boolean mDVRInitialised = false;
@@ -110,13 +100,6 @@ public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback
 		} catch (UnsatisfiedLinkError ule) {
 			Log.e("JNI", "WARNING: Could not load libdoomgvr.so");
 		}
-	}
-
-	public void startDownload()
-	{
-		mDownloadTask = new DownloadTask();
-		mDownloadTask.set_context(GLES3JNIActivity.this);
-		mDownloadTask.execute();
 	}
 
 	private static final String TAG = "DoomGVR";
@@ -327,7 +310,7 @@ public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback
 			Bitmap bmp = null;
 			try {
 				AssetManager assets = this.getAssets();
-				InputStream in = assets.open("splash.jpg");
+				InputStream in = assets.open("splash.png");
 				bmp = BitmapFactory.decodeStream(in);
 				in.close();
 			} catch (Exception e) {
@@ -507,7 +490,7 @@ public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback
 	{
 		if (mShowingSpashScreen) {
 			mShowingSpashScreen = false;
-			mWADChooser.Initialise(this.getAssets());
+			mWADChooser.Initialise(this);
 		}
 	}
 
@@ -720,7 +703,7 @@ public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback
 	 */
 	@Override
 	public void OnImageUpdate(int[] pixels, int eye) {
-		mDoomBitmap.setPixels(pixels, 0, mDoomWidth, 0, 0, mDoomWidth, mDoomHeight);
+		//No longer used
 	}
 
 	/**
@@ -741,9 +724,6 @@ public class GLES3JNIActivity extends Activity implements SurfaceHolder.Callback
 		Log.d(TAG, "OnInitGraphics creating Bitmap of " + w + " by " + h);
 		mDoomWidth = w;
 		mDoomHeight = h;
-		mDoomBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
-
-		openGL.SetBitmap(mDoomBitmap);
 		openGL.CreateFBO(openGL.fbo, mDoomWidth, mDoomHeight);
 	}
 

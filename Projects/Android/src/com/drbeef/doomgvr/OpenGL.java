@@ -134,7 +134,7 @@ public class OpenGL {
 
 	public float screenDistance = -8f;
 	public float splashScreenDistance = -12f;
-	public float gameScreenDistance = -3.5f;
+	public float gameScreenDistance = -3.45f;
 	public float screenScale = 3f;
 
 	public static final String vs_Image =
