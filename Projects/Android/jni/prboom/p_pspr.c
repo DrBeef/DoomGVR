@@ -155,58 +155,64 @@ int weapon_preferences[2][NUMWEAPONS+1] = {
 
 int P_SwitchWeapon(player_t *player)
 {
-  int *prefer = weapon_preferences[demo_compatibility!=0]; // killough 3/22/98
+  int prefer = player->readyweapon;//weapon_preferences[demo_compatibility!=0]; // killough 3/22/98
   int currentweapon = player->readyweapon;
   int newweapon = currentweapon;
   int i = NUMWEAPONS+1;   // killough 5/2/98
 
   // killough 2/8/98: follow preferences and fix BFG/SSG bugs
 
-  do
-    switch (*prefer++)
-      {
+  //SB: Change to cycle through all (available) weapons
+  do {
+    if (++prefer == NUMWEAPONS+1)
+    {
+      prefer = 0;
+    }
+
+    switch (prefer) {
       case 1:
         if (!player->powers[pw_strength])      // allow chainsaw override
           break;
       case 0:
         newweapon = wp_fist;
-        break;
+            break;
       case 2:
         if (player->ammo[am_clip])
           newweapon = wp_pistol;
-        break;
+            break;
       case 3:
         if (player->weaponowned[wp_shotgun] && player->ammo[am_shell])
           newweapon = wp_shotgun;
-        break;
+            break;
       case 4:
         if (player->weaponowned[wp_chaingun] && player->ammo[am_clip])
           newweapon = wp_chaingun;
-        break;
+            break;
       case 5:
         if (player->weaponowned[wp_missile] && player->ammo[am_misl])
           newweapon = wp_missile;
-        break;
+            break;
       case 6:
         if (player->weaponowned[wp_plasma] && player->ammo[am_cell] &&
-            gamemode != shareware)
+                                              gamemode != shareware)
           newweapon = wp_plasma;
-        break;
+            break;
       case 7:
         if (player->weaponowned[wp_bfg] && gamemode != shareware &&
-            player->ammo[am_cell] >= (demo_compatibility ? 41 : 40))
+                                           player->ammo[am_cell] >= (demo_compatibility ? 41 : 40))
           newweapon = wp_bfg;
-        break;
+            break;
       case 8:
         if (player->weaponowned[wp_chainsaw])
           newweapon = wp_chainsaw;
-        break;
+            break;
       case 9:
         if (player->weaponowned[wp_supershotgun] && gamemode == commercial &&
-            player->ammo[am_shell] >= (demo_compatibility ? 3 : 2))
+                                                    player->ammo[am_shell] >= (demo_compatibility ? 3 : 2))
           newweapon = wp_supershotgun;
-        break;
-      }
+            break;
+    }
+  }
   while (newweapon==currentweapon && --i);          // killough 5/2/98
   return newweapon;
 }
